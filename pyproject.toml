@@ -1,0 +1,103 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "newsletter-crawler"
+version = "1.0.0"
+description = "A focused solution for crawling newsletter content"
+readme = "README.md"
+authors = [{name = "Newsletter System Team"}]
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = ["newsletter", "crawler", "web-scraping", "content-extraction"]
+dependencies = [
+    "aiohttp>=3.8.0",
+    "aiofiles>=23.0.0",
+    "playwright>=1.40.0",
+    "beautifulsoup4>=4.12.0",
+    "markdownify>=0.11.0",
+    "tqdm>=4.66.0",
+    "python-dateutil>=2.8.0",
+    "pillow>=10.0.0",
+    "requests>=2.31.0",
+    # Removed: scikit-learn and numpy (not needed for crawler-only functionality)
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+newsletter-crawler = "newsletter_system.scripts.run_optimized:main"
+newsletter-basic = "newsletter_system.scripts.run:main"
+
+[project.urls]
+Documentation = "https://github.com/your-org/newsletter-system/docs"
+Source = "https://github.com/your-org/newsletter-system"
+Tracker = "https://github.com/your-org/newsletter-system/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+per-file-ignores = ["__init__.py:F401"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+
+[tool.pytest.ini_options]
+testpaths = ["src/tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]

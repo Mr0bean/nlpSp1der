@@ -1,0 +1,39 @@
+{
+  "crawler": {
+    "base_url": "https://nlp.elvissaravia.com",
+    "api_endpoint": "/api/v1/archive",
+    "output_directory": "crawled_data",
+    "request_delay": 2,
+    "max_retries": 3,
+    "timeout": 30,
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "max_concurrent_articles": 5,
+    "max_concurrent_images": 20,
+    "batch_size": 10,
+    "api_delay": 1.0,
+    "article_delay": 0.5,
+    "enable_resume": true
+  },
+  "recommendation": {
+    "max_features": 5000,
+    "min_df": 1,
+    "max_df": 0.8,
+    "ngram_range": [1, 2],
+    "popularity_weights": {
+      "reactions": 0.3,
+      "wordcount_bonus": 10,
+      "recent_bonus": 20,
+      "type_bonus": 5
+    },
+    "time_decay": {
+      "week": 20,
+      "month": 10,
+      "quarter": 5
+    }
+  },
+  "file_settings": {
+    "image_formats": [".jpg", ".jpeg", ".png", ".gif", ".webp"],
+    "max_image_size": "10MB",
+    "markdown_encoding": "utf-8"
+  }
+}
