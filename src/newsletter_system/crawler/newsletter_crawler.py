@@ -196,11 +196,15 @@ class NewsletterCrawler:
                 args=['--disable-blink-features=AutomationControlled']
             )
             
-            # 创建页面池
-            for _ in range(min(self.config.max_concurrent_articles, 3)):
+            # 创建页面池 - 根据配置创建足够的页面
+            page_count = min(self.config.max_concurrent_articles, 5)  # 最多5个页面
+            for _ in range(page_count):
                 page = await self.browser.new_page()
                 await page.set_viewport_size({'width': 1920, 'height': 1080})
+                # 设置页面超时
+                page.set_default_timeout(self.config.browser_timeout)
                 self.page_pool.append(page)
+            logger.info(f"创建了 {page_count} 个浏览器页面")
         
         # 加载进度
         if self.config.enable_resume:
@@ -362,9 +366,12 @@ class NewsletterCrawler:
             
             response = await page.goto(article_url, wait_until='networkidle', timeout=self.config.browser_timeout)
             
-            # 检查HTTP响应状态码是否被限流
-            if response and response.status == 429:
-                logger.warning(f"检测到限流 (HTTP 429): {article_url}")
+            # 检查HTTP响应状态码
+            status_code = response.status if response else None
+            
+            # 只有真正的HTTP 429才算限流
+            if status_code == 429:
+                logger.warning(f"检测到真实的HTTP 429限流: {article_url}")
                 if retry_count < max_retries:
                     # 限流时等待更长时间
                     await asyncio.sleep(10)
@@ -373,12 +380,24 @@ class NewsletterCrawler:
                     logger.error(f"超过最大重试次数，限流持续: {article_url}")
                     return None
             
+            # 如果状态码不是200也不是429，记录但继续尝试
+            if status_code and status_code != 200:
+                logger.debug(f"HTTP状态码 {status_code}: {article_url}")
+            
             # 获取页面内容
             page_content = await page.content()
             
-            # 只检查页面内容中的明确限流文本，不检查数字
-            if 'Too Many Requests' in page_content or 'Rate limit exceeded' in page_content:
-                logger.warning(f"页面内容显示限流: {article_url}")
+            # 只检查Cloudflare或真实的限流页面文本
+            rate_limit_indicators = [
+                'Access denied',
+                'Error 1015',
+                'You are being rate limited',
+                'Too many requests from this IP',
+                'Please wait a few minutes'
+            ]
+            
+            if any(indicator in page_content for indicator in rate_limit_indicators):
+                logger.warning(f"检测到限流页面: {article_url}")
                 if retry_count < max_retries:
                     await asyncio.sleep(10)
                     return await self.get_article_content_with_page(article_url, page, retry_count + 1)
@@ -386,9 +405,17 @@ class NewsletterCrawler:
                     logger.error(f"超过最大重试次数，限流持续: {article_url}")
                     return None
             
-            # 检查是否需要登录或付费
-            if any(text in page_content for text in ['Sign in', 'Subscribe', 'Premium content', 'Members only']):
-                logger.warning(f"文章可能需要登录或付费: {article_url}")
+            # 检查是否真正需要登录或付费（更严格的条件）
+            paywall_indicators = [
+                'This post is for paid subscribers',
+                'Upgrade to paid',
+                'This content is for subscribers only',
+                'Become a paid subscriber to read',
+                'Available for paid subscribers'
+            ]
+            
+            if any(indicator in page_content for indicator in paywall_indicators):
+                logger.warning(f"文章需要付费订阅: {article_url}")
             
             # 等待内容加载 - 优先使用干净的内容选择器
             content_selectors = [
@@ -443,18 +470,20 @@ class NewsletterCrawler:
         return None
     
     async def process_article_batch(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """批量处理文章"""
+        """批量处理文章 - 使用信号量限制并发"""
         results = []
         
-        # 获取可用页面
-        pages = self.page_pool[:len(articles)]
+        # 使用信号量限制并发数，避免页面冲突
+        sem = asyncio.Semaphore(len(self.page_pool))
+        
+        async def process_with_semaphore(article, index):
+            async with sem:
+                # 获取一个可用页面
+                page = self.page_pool[index % len(self.page_pool)]
+                return await self.process_article_with_page(article, page)
         
         # 创建任务
-        tasks = []
-        for i, article in enumerate(articles):
-            page = pages[i % len(pages)]
-            task = self.process_article_with_page(article, page)
-            tasks.append(task)
+        tasks = [process_with_semaphore(article, i) for i, article in enumerate(articles)]
         
         # 并发执行
         batch_results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -549,16 +578,14 @@ class NewsletterCrawler:
         # 转换为Markdown
         markdown_content = ""
         if html_content and MARKDOWNIFY_AVAILABLE:
-            # 检查HTML内容是否包含错误信息
-            if 'Too Many Requests' in html_content:
-                logger.warning(f"文章内容包含限流错误: {article_id}")
-                markdown_content = "**错误: 访问被限流 (Too Many Requests)**\n\n请稍后重试。"
-            elif len(html_content) < 100:
+            # 只在内容真的太短时才警告
+            if len(html_content) < 100:
                 logger.warning(f"文章内容过短 ({len(html_content)} 字符): {article_id}")
                 markdown_content = md(html_content, heading_style="ATX", strip=['script', 'style'])
                 if not markdown_content.strip():
                     markdown_content = "**注意: 未能获取到有效内容**"
             else:
+                # 正常转换为Markdown
                 markdown_content = md(html_content, heading_style="ATX", strip=['script', 'style'])
         elif not html_content:
             logger.warning(f"未获取到HTML内容: {article_id}")

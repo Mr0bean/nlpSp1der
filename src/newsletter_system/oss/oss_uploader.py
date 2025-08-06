@@ -20,8 +20,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class MinIOUploader:
-    def __init__(self, endpoint: str = "http://localhost:9011", access_key: str = "", secret_key: str = ""):
+    def __init__(self, endpoint: str = "http://localhost:9011", public_base_url: str = "http://localhost:9000", access_key: str = "", secret_key: str = ""):
         self.endpoint = endpoint.rstrip('/')
+        self.public_base_url = public_base_url.rstrip('/')
         self.api_base = f"{self.endpoint}/api/v1"
         self.access_key = access_key
         self.secret_key = secret_key
@@ -94,8 +95,8 @@ class MinIOUploader:
             async with self.session.post(url, data=data, params=params) as resp:
                 if resp.status == 201:
                     result = await resp.json()
-                    # Construct public URL
-                    public_url = f"{self.endpoint}/{bucket_name}/{object_name}"
+                    # Construct public URL using public base URL
+                    public_url = f"{self.public_base_url}/{bucket_name}/{object_name}"
                     logger.debug(f"✅ Uploaded: {object_name} -> {public_url}")
                     return public_url
                 else:
@@ -124,7 +125,7 @@ class MinIOUploader:
                 if resp.status == 201:
                     result = await resp.json()
                     # Construct public URL
-                    public_url = f"{self.endpoint}/{bucket_name}/{object_name}"
+                    public_url = f"{self.public_base_url}/{bucket_name}/{object_name}"
                     logger.debug(f"✅ Uploaded JSON: {object_name} -> {public_url}")
                     return public_url
                 else:
@@ -163,18 +164,60 @@ class NewsletterOSSUploader:
         
     def replace_image_urls(self, content: str, image_mappings: Dict[str, str]) -> str:
         """替换内容中的本地图片路径为OSS URL"""
-        for local_path, oss_url in image_mappings.items():
-            # 处理各种可能的路径格式
+        import re
+        
+        # Sort by length in descending order to avoid partial replacements
+        sorted_mappings = sorted(image_mappings.items(), key=lambda x: len(x[0]), reverse=True)
+        
+        for local_path, oss_url in sorted_mappings:
+            # Only process paths that haven't already been replaced (don't contain http://)
+            if 'http://' in local_path or 'https://' in local_path:
+                continue
+                
+            # Build comprehensive patterns for this specific image
             patterns = [
                 local_path,
                 f"../{local_path}",
                 f"../../{local_path}",
-                local_path.replace('crawled_data/', ''),
-                local_path.replace('images/', ''),
             ]
             
+            # Add patterns without 'crawled_data/' prefix if present
+            if local_path.startswith('crawled_data/'):
+                patterns.append(local_path.replace('crawled_data/', ''))
+            
             for pattern in patterns:
-                content = content.replace(pattern, oss_url)
+                escaped_pattern = re.escape(pattern)
+                
+                # Handle markdown image syntax: ![alt](path)
+                content = re.sub(
+                    rf'!\[([^\]]*)\]\({escaped_pattern}\)',
+                    rf'![\1]({oss_url})',
+                    content
+                )
+                
+                # Handle HTML img tags: <img src="path">
+                content = re.sub(
+                    rf'<img([^>]+)src=["\']{escaped_pattern}["\']',
+                    rf'<img\1src="{oss_url}"',
+                    content
+                )
+                
+                # Handle markdown link images: [![](path)](link)
+                content = re.sub(
+                    rf'\[!\[([^\]]*)\]\({escaped_pattern}\)\]',
+                    rf'[![\1]({oss_url})]',
+                    content
+                )
+                
+                # Also do simple string replacement for any remaining occurrences
+                # Only if the pattern doesn't appear within an already processed URL
+                if pattern in content:
+                    # Split by existing URLs to avoid replacing within them
+                    parts = re.split(r'(https?://[^\s\)]+)', content)
+                    for i in range(len(parts)):
+                        if not parts[i].startswith('http'):  # Only replace in non-URL parts
+                            parts[i] = parts[i].replace(pattern, oss_url)
+                    content = ''.join(parts)
                 
         return content
         

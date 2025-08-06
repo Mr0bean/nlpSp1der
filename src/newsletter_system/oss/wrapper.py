@@ -18,6 +18,7 @@ class OSSUploaderWrapper:
         """Initialize with config dictionary"""
         self.config = config
         self.endpoint = config.get('base_url', 'http://localhost:9011')
+        self.public_base_url = config.get('public_base_url', 'http://localhost:9000')
         self.bucket_name = config.get('bucket_name', 'newsletter-articles-nlp')
         self.uploader = None
         
@@ -42,7 +43,7 @@ class OSSUploaderWrapper:
             
             logger = logging.getLogger(__name__)
             
-            async with MinIOUploader(self.endpoint) as client:
+            async with MinIOUploader(self.endpoint, self.public_base_url) as client:
                 # Use the bucket name from config
                 bucket_name = self.bucket_name
                 
@@ -78,7 +79,7 @@ class OSSUploaderWrapper:
                         # Collect sample URLs
                         if success_count <= 3:
                             article_id = article_dir.name.split('_')[0]
-                            sample_urls.append(f"{self.endpoint}/{bucket_name}/articles/{article_dir.name}/metadata.json")
+                            sample_urls.append(f"{self.public_base_url}/{bucket_name}/articles/{article_dir.name}/metadata.json")
                     else:
                         failed_count += 1
                         
@@ -110,17 +111,17 @@ class OSSUploaderWrapper:
                                         if 'cover_image' in article and article['cover_image']:
                                             cover = article['cover_image']
                                             if isinstance(cover, str) and cover.startswith('images/'):
-                                                article['cover_image'] = f"{self.endpoint}/{bucket_name}/articles/{article_dir_name}/{cover}"
+                                                article['cover_image'] = f"{self.public_base_url}/{bucket_name}/articles/{article_dir_name}/{cover}"
                                             elif isinstance(cover, dict) and 'url' in cover:
                                                 if cover['url'].startswith('images/'):
-                                                    cover['url'] = f"{self.endpoint}/{bucket_name}/articles/{article_dir_name}/{cover['url']}"
+                                                    cover['url'] = f"{self.public_base_url}/{bucket_name}/articles/{article_dir_name}/{cover['url']}"
                                         
                                         # Replace content images URLs
                                         if 'content_images' in article:
                                             updated_images = []
                                             for img in article['content_images']:
                                                 if isinstance(img, str) and img.startswith('images/'):
-                                                    updated_images.append(f"{self.endpoint}/{bucket_name}/articles/{article_dir_name}/{img}")
+                                                    updated_images.append(f"{self.public_base_url}/{bucket_name}/articles/{article_dir_name}/{img}")
                                                 else:
                                                     updated_images.append(img)
                                             article['content_images'] = updated_images
@@ -130,13 +131,13 @@ class OSSUploaderWrapper:
                                             # Replace markdown image references
                                             article['content'] = re.sub(
                                                 r'!\[([^\]]*)\]\(images/[^)]+\)',
-                                                lambda m: f"![{m.group(1)}]({self.endpoint}/{bucket_name}/articles/{article_dir_name}/{m.group(0).split('(')[1][:-1]})",
+                                                lambda m: f"![{m.group(1)}]({self.public_base_url}/{bucket_name}/articles/{article_dir_name}/{m.group(0).split('(')[1][:-1]})",
                                                 article['content']
                                             )
                                             # Replace HTML img src
                                             article['content'] = re.sub(
                                                 r'src="images/[^"]+"',
-                                                lambda m: f'src="{self.endpoint}/{bucket_name}/articles/{article_dir_name}/{m.group(0)[5:]}"',
+                                                lambda m: f'src="{self.public_base_url}/{bucket_name}/articles/{article_dir_name}/{m.group(0)[5:]}"',
                                                 article['content']
                                             )
                             
@@ -162,7 +163,7 @@ class OSSUploaderWrapper:
                 logger.info(f"  ❌ Failed: {failed_count}")
                 logger.info(f"  🪣 Bucket: {bucket_name}")
                 logger.info(f"  🌐 Endpoint: {self.endpoint}")
-                logger.info(f"  📍 Public URL base: {self.endpoint}/{bucket_name}/")
+                logger.info(f"  📍 Public URL base: {self.public_base_url}/{bucket_name}/")
                 logger.info("="*50)
                 
                 return {

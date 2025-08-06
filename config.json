@@ -7,9 +7,9 @@
     "max_retries": 3,
     "timeout": 30,
     "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "max_concurrent_articles": 5,
-    "max_concurrent_images": 20,
-    "batch_size": 10,
+    "max_concurrent_articles": 2,
+    "max_concurrent_images": 5,
+    "batch_size": 5,
     "api_delay": 1.0,
     "article_delay": 0.5,
     "enable_resume": false
