@@ -68,6 +68,12 @@ class OSSUploaderWrapper:
                 
                 logger.info(f"📊 Found {len(article_dirs)} articles to process")
                 
+                # 建立已上传目录映射：article_id -> 实际目录名，避免依赖 slug/标题推导导致不一致
+                article_id_to_dir: Dict[str, str] = {}
+                for d in article_dirs:
+                    article_id = d.name.split('_')[0]
+                    article_id_to_dir[article_id] = d.name
+
                 # Upload articles
                 success_count = 0
                 failed_count = 0
@@ -103,9 +109,14 @@ class OSSUploaderWrapper:
                                 for article in data:
                                     if isinstance(article, dict):
                                         article_id = str(article.get('id', ''))
-                                        slug = article.get('slug', 'article')
-                                        # Use the same directory naming convention as in upload_article
-                                        article_dir_name = f"{article_id}_{slug.replace('/', '-')}"
+                                        # 优先使用真实存在的目录名
+                                        article_dir_name = article_id_to_dir.get(article_id)
+                                        if not article_dir_name:
+                                            # 回退策略：按爬虫生成规则尝试根据 title 构造安全目录名
+                                            title = article.get('title') or article.get('slug', 'article')
+                                            safe_title = re.sub(r'[^\w\s-]', '', title).strip()
+                                            safe_title = re.sub(r'[-\s]+', '-', safe_title)[:50]
+                                            article_dir_name = f"{article_id}_{safe_title}"
                                         
                                         # Replace cover image URL
                                         if 'cover_image' in article and article['cover_image']:

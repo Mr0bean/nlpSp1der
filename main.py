@@ -74,14 +74,20 @@ def upload_to_oss(args):
     # 覆盖配置中的值（如果命令行提供了）
     if args.bucket:
         oss_config['bucket_name'] = args.bucket
+    # 覆盖端点配置（若提供）
+    if getattr(args, 'endpoint', None):
+        oss_config['base_url'] = args.endpoint
+    if getattr(args, 'public_base_url', None):
+        oss_config['public_base_url'] = args.public_base_url
     
     # 运行上传
     import asyncio
     from src.newsletter_system.oss import OSSUploader
     
     async def run_upload():
+        base_dir = Path(args.source_dir or args.output)
         async with OSSUploader(oss_config) as uploader:
-            stats = await uploader.upload_all(Path(args.output), resume=not args.no_resume)
+            stats = await uploader.upload_all(base_dir, resume=not args.no_resume)
             return stats
     
     stats = asyncio.run(run_upload())
@@ -134,6 +140,10 @@ def main():
     upload_parser.add_argument('--bucket', help='覆盖配置中的bucket名称')
     upload_parser.add_argument('--no-resume', action='store_true', help='不使用断点续传')
     upload_parser.add_argument('--output', default='crawled_data', help='数据目录')
+    # 稳定别名与覆盖项，避免后续改动影响
+    upload_parser.add_argument('--source-dir', dest='source_dir', default=None, help='数据目录（别名，等价于 --output）')
+    upload_parser.add_argument('--endpoint', dest='endpoint', default=None, help='覆盖配置中的endpoint/base_url')
+    upload_parser.add_argument('--public-base-url', dest='public_base_url', default=None, help='覆盖配置中的public_base_url')
     
     # 解析参数
     args = parser.parse_args()

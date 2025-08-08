@@ -210,12 +210,9 @@ class AntiDetectCrawler(NewsletterCrawler):
                 logger.info(f"重试 {retry_count}/{max_retries}，等待 {delay:.1f} 秒...")
                 await asyncio.sleep(delay)
             
-            # 随机化请求头
-            await page.set_extra_http_headers({
-                'Referer': 'https://www.google.com/',
-                'DNT': '1',
-                'X-Requested-With': 'XMLHttpRequest' if random.random() > 0.5 else None,
-            })
+            # 随机化请求头（避免 None 值）
+            headers = self.build_random_headers()
+            await page.set_extra_http_headers(headers)
             
             # 导航到页面（增加超时时间）
             response = await page.goto(
@@ -304,6 +301,16 @@ class AntiDetectCrawler(NewsletterCrawler):
                 return await self.get_article_content_with_page(article_url, page, retry_count + 1)
         
         return None
+
+    def build_random_headers(self) -> Dict[str, str]:
+        """构建随机请求头（不包含 None 值），便于测试与复用"""
+        headers: Dict[str, str] = {
+            'Referer': 'https://www.google.com/',
+            'DNT': '1',
+        }
+        if random.random() > 0.5:
+            headers['X-Requested-With'] = 'XMLHttpRequest'
+        return headers
     
     async def simulate_human_behavior(self, page: Page):
         """模拟人类行为"""
@@ -360,37 +367,43 @@ class AntiDetectCrawler(NewsletterCrawler):
             
             # 处理批次
             for article in batch:
-                # 检查是否已处理
-                article_id = str(article.get('id', ''))
-                if article_id in self.progress.processed_articles:
-                    logger.info(f"跳过已处理文章: {article_id}")
+                # 检查是否已处理（统一为 int 类型）
+                raw_id = article.get('id')
+                try:
+                    article_id_int = int(raw_id) if raw_id is not None else None
+                except (TypeError, ValueError):
+                    article_id_int = None
+                if (article_id_int is not None) and (article_id_int in self.progress.processed_articles):
+                    logger.info(f"跳过已处理文章: {article_id_int}")
                     stats['skipped_articles'] += 1
                     continue
-                
+
                 # 随机选择一个页面
                 page = random.choice(self.page_pool)
                 result = await self.process_article_with_page(article, page)
-                
+
                 if result:
                     processed_count += 1
                     stats['processed_articles'] += 1
-                    self.progress.processed_articles.add(article_id)
+                    if article_id_int is not None:
+                        self.progress.processed_articles.add(article_id_int)
                 else:
                     failed_count += 1
                     stats['failed_articles'] += 1
-                    self.progress.failed_articles[article_id] = "Processing failed"
-                
+                    if article_id_int is not None:
+                        self.progress.failed_articles[article_id_int] = "Processing failed"
+
                 # 保存进度
                 if self.config.enable_resume:
                     self.progress.save(self.progress_file)
-                
+
                 # 智能延迟：失败后等待更长时间
                 if not result:
                     delay = random.uniform(10, 20)
                     logger.info(f"失败后延迟 {delay:.1f} 秒...")
                 else:
                     delay = random.uniform(3, 8)
-                    
+
                 await asyncio.sleep(delay)
             
             # 批次间延迟（更长）

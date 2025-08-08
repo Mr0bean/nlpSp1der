@@ -1,6 +1,6 @@
 # Makefile for Newsletter System
 
-.PHONY: help install install-dev test lint format clean build run-crawler run-basic docs
+.PHONY: help install install-dev test lint format clean build run-crawler run-basic docs protect
 
 # Default target
 help:
@@ -15,6 +15,7 @@ help:
 	@echo "  run-crawler - Run optimized crawler"
 	@echo "  run-basic   - Run basic crawler"
 	@echo "  docs        - View documentation structure"
+	@echo "  protect     - Run protected flow check"
 
 # Installation targets
 install:
@@ -59,6 +60,10 @@ docs:
 	@echo ""
 	@echo "📁 Source Structure:"
 	@find src -name "*.py" -not -path "*/test*" | head -10
+
+# Protected flows check
+protect:
+	python3 scripts/protect_flows_check.py --staged || true
 
 # Setup development environment
 setup-dev: install-dev

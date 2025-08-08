@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: protect-flows
+        name: Protect critical flows
+        entry: python3 scripts/protect_flows_check.py --staged
+        language: system
+        pass_filenames: false
+        stages: [commit]
+

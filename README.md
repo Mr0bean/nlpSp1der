@@ -51,6 +51,15 @@ Example:
 python run_optimized.py --max-concurrent-articles 10 --batch-size 20
 ```
 
+### Stable Entrypoint (Pinned)
+This project pins a stable crawl entry to avoid future regressions:
+```bash
+python main.py crawl --output crawled_data
+```
+Notes:
+- The crawl flow is protected. Please avoid changing crawler entry/behavior unless necessary.
+- Upload flow is protected separately and must not be modified without explicit approval.
+
 ## Output Structure
 
 ```

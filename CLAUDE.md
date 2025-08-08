@@ -60,6 +60,13 @@ python -m py_compile src/newsletter_system/crawler/newsletter_crawler.py
 python -u run.py  # Unbuffered output for real-time logging
 ```
 
+## Protected Flows
+
+These flows are pinned and must not be modified without explicit approval:
+
+- Upload flow: `main.py upload` and code under `src/newsletter_system/oss/*`, plus `config.json` `oss.*` contract.
+- Crawl stable entry: `python main.py crawl --output <dir>` should remain supported as a stable interface.
+
 ## Architecture Overview
 
 This is a Newsletter crawling system focused on content extraction and processing:

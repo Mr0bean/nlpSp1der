@@ -188,7 +188,7 @@ class NewsletterCrawler:
             }
         )
         
-        # 启动playwright
+        # 启动playwright（缺失时直接报错，避免并发信号量为0导致卡死）
         if PLAYWRIGHT_AVAILABLE:
             self.playwright = await async_playwright().start()
             self.browser = await self.playwright.chromium.launch(
@@ -205,6 +205,9 @@ class NewsletterCrawler:
                 page.set_default_timeout(self.config.browser_timeout)
                 self.page_pool.append(page)
             logger.info(f"创建了 {page_count} 个浏览器页面")
+        else:
+            logger.error("Playwright 未安装或不可用。请先安装依赖并执行: 'pip install playwright' 然后 'playwright install chromium'")
+            raise RuntimeError("Playwright is required for content crawling. Please install it.")
         
         # 加载进度
         if self.config.enable_resume:
@@ -474,6 +477,8 @@ class NewsletterCrawler:
         results = []
         
         # 使用信号量限制并发数，避免页面冲突
+        if not self.page_pool:
+            raise RuntimeError("No browser pages available. Ensure Playwright is installed and initialized.")
         sem = asyncio.Semaphore(len(self.page_pool))
         
         async def process_with_semaphore(article, index):
@@ -542,7 +547,8 @@ class NewsletterCrawler:
         cover_image_info = None
         if article_meta.get('cover_image'):
             cover_url = article_meta['cover_image']
-            cover_path = images_dir / "cover.jpg"
+            cover_ext = self._guess_image_extension(cover_url)
+            cover_path = images_dir / f"cover{cover_ext}"
             image_tasks.append((cover_url, cover_path))
         
         # 文章中的图片
@@ -550,7 +556,8 @@ class NewsletterCrawler:
         if html_content:
             article_image_urls = self.extract_images_from_html(html_content)
             for i, img_url in enumerate(article_image_urls):
-                img_path = images_dir / f"img_{i}.jpg"
+                img_ext = self._guess_image_extension(img_url)
+                img_path = images_dir / f"img_{i}{img_ext}"
                 image_tasks.append((img_url, img_path))
         
         # 批量下载所有图片
@@ -571,8 +578,9 @@ class NewsletterCrawler:
                         'hash': img_info['hash'],
                         'size': img_info['size']
                     })
-                    # 替换HTML中的图片链接为相对路径
-                    relative_path = f"images/img_{i}.jpg"
+                    # 替换HTML中的图片链接为相对路径（保留原扩展名）
+                    rel_ext = Path(article_images[-1]['local_path']).suffix or '.jpg'
+                    relative_path = f"images/img_{i}{rel_ext}"
                     html_content = html_content.replace(img_url, relative_path)
         
         # 转换为Markdown
@@ -733,6 +741,17 @@ class NewsletterCrawler:
             md_content.append("")
         
         return "\n".join(md_content)
+
+    def _guess_image_extension(self, url: str) -> str:
+        """根据 URL 猜测图片扩展名，默认为 .jpg"""
+        try:
+            parsed = urlparse(url)
+            suffix = Path(parsed.path).suffix.lower()
+            if suffix in {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'}:
+                return suffix
+        except Exception:
+            pass
+        return '.jpg'
     
     async def crawl_all(self) -> Dict[str, Any]:
         """爬取所有文章"""

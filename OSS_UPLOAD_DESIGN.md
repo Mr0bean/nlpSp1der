@@ -35,7 +35,6 @@ crawled_data/
 │       └── images/
 │           ├── cover.jpg       # 封面图片
 │           └── img_*.jpg       # 内容图片
-├── images/                     # 全局图片目录
 └── data/                       # 全局数据文件
     ├── articles_metadata.json
     ├── processed_articles.json
