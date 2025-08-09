@@ -1,5 +1,7 @@
 # NLP Newsletter Crawler
 
+上传的时候理论上每个爬虫来源都指向自己的bucket(oss)
+
 A high-performance web crawler for extracting and processing articles from the NLP Newsletter (https://nlp.elvissaravia.com/).
 
 ## Features
