@@ -1,5 +1,14 @@
 """
-File utility functions.
+文件工具函数。
+
+包含目录保障、JSON 读写与项目根目录定位等常用能力，避免在业务代码中重复实现。
+
+使用示例：
+    from newsletter_system.utils.file_utils import ensure_directory, save_json, load_json
+
+    ensure_directory("crawled_data/data")
+    save_json({"ok": True}, "crawled_data/data/demo.json")
+    data = load_json("crawled_data/data/demo.json", default={})
 """
 
 import json

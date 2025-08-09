@@ -38,7 +38,8 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "newsletter-crawler=newsletter_system.scripts.run_optimized:main",
+            # 统一指向已存在的基础运行脚本
+            "newsletter-crawler=newsletter_system.scripts.run:main",
             "newsletter-basic=newsletter_system.scripts.run:main",
         ]
     },

@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """
-Newsletter爬虫运行脚本
+Newsletter 爬虫运行脚本（基础版）。
+
+用途：
+- 面向常规站点/轻度风控场景，直接基于 `NewsletterCrawler` 进行抓取。
+- 通过命令行参数配置输出目录、并发、批次与延迟等关键行为。
+
+提示：
+- 若频繁出现限流或验证码，建议改用 `run_anti_detect.py`。
 """
 
 import asyncio

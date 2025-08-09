@@ -11,15 +11,15 @@ requests>=2.31.0
 
 # Anti-detection dependencies
 playwright-stealth>=1.0.6
-fake-useragent>=1.4.0
+# fake-useragent>=1.4.0  # 未使用，保留为可选
 
-# Elasticsearch dependencies
-elasticsearch[async]>=8.11.0
+# Elasticsearch dependencies（可选：当前项目未使用，默认不安装）
+# elasticsearch[async]>=8.11.0
 
-# Optional: For embeddings and vector search
-sentence-transformers>=2.2.0
-torch>=2.0.0
-numpy>=1.24.0
+# Optional: For embeddings and vector search（可选：当前项目未使用，默认不安装）
+# sentence-transformers>=2.2.0
+# torch>=2.0.0
+# numpy>=1.24.0
 
 # Optional: For future recommendation features (not implemented in crawler)
 # scikit-learn>=1.3.0

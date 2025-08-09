@@ -9,11 +9,10 @@ import time
 from pathlib import Path
 import json
 
-# 添加当前目录到Python路径
-sys.path.append(str(Path(__file__).parent))
+# 添加 src 到 Python 路径
+sys.path.append(str(Path(__file__).resolve().parents[1]))  # 指向 src 目录
 
-from crawler.newsletter_crawler import NewsletterCrawler
-from crawler.optimized_crawler import OptimizedNewsletterCrawler, CrawlerConfig
+from newsletter_system.crawler.newsletter_crawler import NewsletterCrawler, CrawlerConfig
 
 
 async def benchmark_basic_crawler():
@@ -23,21 +22,24 @@ async def benchmark_basic_crawler():
     start_time = time.time()
     
     try:
-        async with NewsletterCrawler(output_dir="test_basic") as crawler:
+        config = CrawlerConfig(
+            output_dir="test_basic",
+            max_concurrent_articles=3,
+            max_concurrent_images=8,
+            batch_size=5,
+            enable_resume=False
+        )
+        async with NewsletterCrawler(config) as crawler:
             # 只获取前5篇文章进行测试
             articles_metadata = await crawler.get_all_articles_metadata()
             test_articles = articles_metadata[:5]
-            
-            processed_count = 0
-            for article in test_articles:
-                try:
-                    await crawler.process_article(article)
-                    processed_count += 1
-                except Exception as e:
-                    print(f"处理文章失败: {e}")
-            
+
+            # 一次批量处理
+            results = await crawler.process_article_batch(test_articles)
+            processed_count = len([r for r in results if r is not None])
+
             elapsed = time.time() - start_time
-            
+
             return {
                 'name': '基础爬虫',
                 'processed_articles': processed_count,
@@ -50,40 +52,9 @@ async def benchmark_basic_crawler():
 
 
 async def benchmark_optimized_crawler():
-    """测试优化爬虫性能"""
-    print("🚀 测试优化爬虫...")
-    
-    start_time = time.time()
-    
-    try:
-        config = CrawlerConfig(
-            output_dir="test_optimized",
-            max_concurrent_articles=3,
-            max_concurrent_images=10,
-            batch_size=5,
-            enable_resume=False
-        )
-        
-        async with OptimizedNewsletterCrawler(config) as crawler:
-            # 只获取前5篇文章进行测试
-            articles_metadata = await crawler.get_all_articles_metadata()
-            test_articles = articles_metadata[:5]
-            
-            # 处理文章
-            results = await crawler.process_article_batch(test_articles)
-            processed_count = len([r for r in results if r is not None])
-            
-            elapsed = time.time() - start_time
-            
-            return {
-                'name': '优化爬虫',
-                'processed_articles': processed_count,
-                'total_time': elapsed,
-                'avg_time_per_article': elapsed / processed_count if processed_count > 0 else 0
-            }
-    except Exception as e:
-        print(f"优化爬虫测试失败: {e}")
-        return None
+    """占位：优化爬虫（当前未实现），返回 None。"""
+    print("🚀 测试优化爬虫（占位，未实现）...")
+    return None
 
 
 async def main():
@@ -126,8 +97,8 @@ async def main():
             print(f"📊 效率提升: {efficiency_improvement:.1f}%")
     
     print("\n💡 建议:")
-    print("- 对于大规模爬取，推荐使用优化版爬虫")
-    print("- 可以通过调整并发参数进一步优化性能")
+    print("- 若遇限流/验证码，建议使用 run_anti_detect.py（反爬增强版）")
+    print("- 可以通过调整并发与延迟参数进一步优化性能")
     print("- 启用断点续传功能可以避免重复工作")
 
 

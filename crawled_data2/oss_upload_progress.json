@@ -185,7 +185,7 @@
     "total_articles": 180,
     "uploaded": 180,
     "failed": 0,
-    "timestamp": "2025-08-08T13:45:23.173625",
+    "timestamp": "2025-08-09T11:53:08.146188",
     "bucket": "newsletter-articles-nlp",
     "endpoint": "http://localhost:9011"
   }

@@ -1,11 +1,24 @@
 # -*- coding: utf-8 -*-
 """
-增强反爬虫检测的爬虫版本
+增强反爬虫检测的爬虫模块。
+
+在基础 `NewsletterCrawler` 能力上增加：
+- 多 UA、视窗尺寸与区域/时区伪装，降低浏览器指纹相似度；
+- 可选集成 `playwright-stealth` 进行更隐蔽的自动化特征规避；
+- 注入多项反检测脚本（隐藏 webdriver、修改 plugins/languages/chrome 对象、覆写权限查询、伪装 WebGL 指纹、常亮页面状态等）；
+- 智能延迟策略：失败/限流后更长等待、批次间随机延迟、指数退避；
+- 更保守的并发配置与页面池管理，降低触发风控概率。
+
+使用场景：
+- 目标站点启用了较强的反爬/风控机制，基础爬虫易触发 429/验证码/Cloudflare 速率限制。
+
+注意：
+- 本模块只扩展采集策略，不改变数据存储结构与输出契约，兼容上游处理。
+- 可选依赖 `playwright-stealth` 缺失时会自动降级为基础反检测功能。
 """
 
 import asyncio
 import random
-import json
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 import logging

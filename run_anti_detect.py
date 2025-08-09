@@ -1,7 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-使用反爬虫检测增强版爬虫
+使用反爬虫检测增强版爬虫的命令行入口。
+
+功能特性：
+- 通过 `EnhancedCrawlerConfig` 配置更保守的并发与更长的延迟；
+- 可选代理支持；
+- 控制台输出关键统计，指导限流情况下的参数调优。
+
+使用示例：
+    # 基础用法（推荐）
+    python run_anti_detect.py
+
+    # 仅处理前 5 篇（快速联调）
+    python run_anti_detect.py --limit 5
+
+    # 极低速策略（最安全）
+    python run_anti_detect.py --concurrent 1 --batch 2 --article-delay 10
 """
 
 import asyncio
@@ -129,7 +144,8 @@ if __name__ == "__main__":
     parser.add_argument('--limit', type=int, help='限制处理文章数（测试用）')
     parser.add_argument('--api-delay', type=float, default=2.0, help='API请求延迟（秒）')
     parser.add_argument('--article-delay', type=float, default=5.0, help='文章处理延迟（秒）')
-    parser.add_argument('--max-retries', type=int, default=5, help='最大重试次数')
+    # 注意：最大重试次数由内部策略控制，因此此参数暂不生效
+    # parser.add_argument('--max-retries', type=int, default=5, help='最大重试次数')
     parser.add_argument('--no-resume', action='store_true', help='禁用断点续传')
     parser.add_argument('--use-proxy', action='store_true', help='使用代理')
     parser.add_argument('--proxy-url', help='代理地址（如 http://127.0.0.1:7890）')

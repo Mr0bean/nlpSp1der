@@ -1,7 +1,29 @@
 # -*- coding: utf-8 -*-
+"""
+Newsletter 爬虫核心模块。
+
+职责概览：
+- 获取文章元数据（分页抓取 API 列表）。
+- 使用 Playwright 渲染页面并抽取正文 HTML，再按需转为 Markdown。
+- 并发下载封面与正文内图片，替换正文中的图片引用为相对路径。
+- 生成每篇文章的 `content.md` 与 `metadata.json`，并输出全量统计。
+- 通过 `ProgressTracker` 实现断点续传（记录已处理文章、失败原因、已下载图片）。
+
+实现要点：
+- 网络层：使用 `aiohttp` 统一请求与超时控制；图片下载单独限流。
+- 浏览器层：维护页面池，避免频繁创建销毁页面导致性能抖动。
+- 并发控制：文章与图片分别使用 `asyncio.Semaphore` 控制上限。
+- 健壮性：API/页面抓取采用指数退避重试；限流时动态延迟。
+
+使用示例：
+    async with NewsletterCrawler(CrawlerConfig(...)) as crawler:
+        stats = await crawler.crawl_all()
+
+依赖说明：
+- 可选依赖缺失时会进行提示（如 `aiohttp`、`aiofiles`、`beautifulsoup4`、`markdownify`、`playwright`）。
+"""
 import asyncio
 import json
-import os
 import re
 import hashlib
 from datetime import datetime
@@ -52,10 +74,11 @@ except ImportError:
     print("警告: markdownify 未安装，请运行 'pip install markdownify' 安装")
 
 try:
-    from tqdm.asyncio import tqdm_asyncio
+    from tqdm.asyncio import tqdm_asyncio  # noqa: F401  # 预留未来进度展示
     TQDM_AVAILABLE = True
 except ImportError:
     TQDM_AVAILABLE = False
+    # 仅提示，不阻断功能
     print("警告: tqdm 未安装，请运行 'pip install tqdm' 安装")
 
 # 配置日志

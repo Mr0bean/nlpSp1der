@@ -1,3 +1,5 @@
 """
-Script package for newsletter system.
+脚本入口包。
+
+包含面向命令行的示例/运行脚本，便于快速体验或集成到 CI/CD。
 """

@@ -10,10 +10,10 @@ import time
 from pathlib import Path
 import json
 
-# 添加当前目录到Python路径
-sys.path.append(str(Path(__file__).parent))
+# 添加 src 到 Python 路径
+sys.path.append(str(Path(__file__).resolve().parents[1]))  # 指向 src 目录
 
-from crawler.optimized_crawler import OptimizedNewsletterCrawler, CrawlerConfig
+from newsletter_system.crawler.newsletter_crawler import NewsletterCrawler, CrawlerConfig
 
 
 async def test_crawler_10_articles():
@@ -35,7 +35,7 @@ async def test_crawler_10_articles():
     start_time = time.time()
     
     try:
-        async with OptimizedNewsletterCrawler(config) as crawler:
+        async with NewsletterCrawler(config) as crawler:
             # 获取文章列表
             print("📋 获取文章列表...")
             articles_metadata = await crawler.get_all_articles_metadata()
